@@ -18,7 +18,6 @@ class data_entry_rule_4_7_bare_numbers(Check):
                 try:
                     if float(this_cell.strip("$").strip()):
                         note = 'Numeric cell values must be a bare number. Please strip the number of its unit and add the unit to the column name.'
-                    print('HEJ bare_number')
                 except ValueError:
                     pass
 
