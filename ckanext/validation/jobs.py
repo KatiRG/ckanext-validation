@@ -102,6 +102,8 @@ def run_validation_job(resource):
     _format = resource['format'].lower()
     report = _validate_table(source, _format=_format, schema=schema, **options)
 
+    log.debug('After validation report: %s', report)
+
     # Hide uploaded files
     if type(report) == Report:
         report = report.to_dict()
