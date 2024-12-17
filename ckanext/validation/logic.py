@@ -96,7 +96,8 @@ def resource_validation_run(context, data_dict):
     async_job = data_dict.get(u'async', True)
 
     # Ensure format is supported
-    if not resource.get(u'format', u'').lower() in settings.SUPPORTED_FORMATS:
+    if not resource.get(u'format', u'').lower() in settings.SUPPORTED_FORMATS and 'csv' not in resource.get('mimetype'):
+        print('HEI logicpy mimetype: ', resource.get('mimetype'))
         raise t.ValidationError(
             {u'format': u'Unsupported resource format.' +
              u'Must be one of {}'.format(
@@ -299,8 +300,10 @@ def resource_validation_run_batch(context, data_dict):
 
                 for resource in dataset['resources']:
 
-                    if (not resource.get(u'format', u'').lower()
-                            in settings.SUPPORTED_FORMATS):
+                    print('HEI resource in logicpy: ', resource)
+                    if (not resource.get(u'format', u'').lower() 
+                            in settings.SUPPORTED_FORMATS and 'csv' not in resource.get('mimetype')):
+                        print('HEI continue')
                         continue
 
                     try:
@@ -626,10 +629,17 @@ def resource_update(up_func, context, data_dict):
             hasattr(upload, 'filename') and
             upload.filename is not None and
             isinstance(upload, uploader.ResourceUpload))
-        if resource['format'] == 'CSV':
+        print('HEI resource: ', resource)
+        if resource['url_type']:
+            print('HEI url type is not none: ', resource['url_type'])
+        else:
+            print('HEI url type is none: ', resource['url_type'])
+        if 'csv' in resource['mimetype'] and resource['url_type']:
+            print('HEI mimetype is csv and url type is not none, sending for validation: ', resource['url_type'])
             _run_sync_validation(
                 id, local_upload=is_local_upload, new_resource=False)
         else:
+            print('HEI resource format is not csv OR url type is none, NOT sending for validation: ', resource['url_type'])
             msg = 'Resource {} is not a CSV file. No validation performed'.format(
                 id)
             log.info(msg)
