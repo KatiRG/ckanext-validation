@@ -96,8 +96,14 @@ def resource_validation_run(context, data_dict):
     async_job = data_dict.get(u'async', True)
 
     # Ensure format is supported
-    if not resource.get(u'format', u'').lower() in settings.SUPPORTED_FORMATS and 'csv' not in resource.get('mimetype'):
-        print('HEI logicpy mimetype: ', resource.get('mimetype'))
+    print('HEI logicpy resource: ', resource)
+    if not resource.get('url_type'):
+        print('HEI logicpy url type is none: ', resource.get('url_type'))
+    else:
+        print('HEI logicpy url type is not none: ', resource.get('url_type'))
+    if (not resource.get(u'format', u'').lower() 
+        in settings.SUPPORTED_FORMATS or not resource.get('url_type')):
+        print('HEI logicpy url_type: ', resource.get('url_type'))
         raise t.ValidationError(
             {u'format': u'Unsupported resource format.' +
              u'Must be one of {}'.format(
@@ -302,7 +308,7 @@ def resource_validation_run_batch(context, data_dict):
 
                     print('HEI resource in logicpy: ', resource)
                     if (not resource.get(u'format', u'').lower() 
-                            in settings.SUPPORTED_FORMATS and 'csv' not in resource.get('mimetype')):
+                            in settings.SUPPORTED_FORMATS):
                         print('HEI continue')
                         continue
 
