@@ -78,7 +78,7 @@ To install ckanext-validation, activate your CKAN virtualenv and run:
 
 Create the database tables running:
 
-    paster validation init-db -c ../path/to/ini/file
+    ckan -c ../path/to/ini/file validation init-db
 
 
 ## Configuration
@@ -361,7 +361,7 @@ You will need to run the `worker` commmand to pick up validation jobs. Please
 refer to the [background jobs documentation](http://docs.ckan.org/en/latest/maintaining/background-tasks.html)
 for more details:
 
-    paster jobs worker -c /path/to/ini/file
+    ckan -c /path/to/ini/file jobs worker
 
 Use `ckanext.validation.run_on_create_async` and
 `ckanext.validation.run_on_update_async` to enable this mode (See [Configuration](#configuration)).
@@ -622,33 +622,33 @@ def resource_validation_run_batch(context, data_dict):
 ### Starting the validation process manually
 
 You can start (asynchronous) validation jobs from the command line using the
-`paster validation run` command. If no parameters are provided it will start a
+`ckan -c /path/to/ckan/ini validation run` command. If no parameters are provided it will start a
 validation job for all resources in the site of suitable format (ie
     `ckanext.validation.formats`):
 
-    paster validation run -c /path/to/ckan/ini
+    ckan -c /path/to/ckan/ini validation run
 
 You can limit the resources by specifying a dataset id or name:
 
-    paster validation run -c /path/to/ckan/ini -d statistical-data-2018
+    ckan -c /path/to/ckan/ini validation run -d statistical-data-2018
 
 Or providing arbitrary search parameters:
 
-    paster validation run -c ../ckan/development.ini -s '{"fq":"res_format:XLSX"}'
+    ckan -c /path/to/ckan/ini validation run -s '{"fq":"res_format:XLSX"}'
 
 
 ### Data validation reports
 
 The extension provides two small utilities to generate a global report with all the current data validation reports:
 
-	paster validation report -c /path/to/ckan/ini
+	ckan -c /path/to/ckan/ini validation report
 
-	paster validation report-full -c /path/to/ckan/ini
+	ckan -c /path/to/ckan/ini validation report-full
 
 
 Both commands will print an overview of the total number of datasets and
 tabular resources, and a breakdown of how many have a validation status of
-success, failure or error. Additionally they will create a CSV report. `paster
+success, failure or error. Additionally they will create a CSV report. `ckan
 validation report` will create a report with all failing resources, including
 the following fields:
 
@@ -659,7 +659,7 @@ the following fields:
 * Status
 * Validation report URL
 
-`paster validation report-full` will add a row on the output CSV for each error
+`ckan -c /path/to/ckan/ini validation report-full` will add a row on the output CSV for each error
 found on the validation report (limited to ten occurrences of the same error
     type per file). So the fields in the generated CSV report will be:
 
@@ -675,20 +675,20 @@ In both cases you can define the location of the output CSV passing the `-o` or
 `--output` option:
 
 
-	paster validation report-full -c /path/to/ckan/ini -o /tmp/reports/validation_full.csv
+	ckan -c /path/to/ckan/ini validation report-full -o /tmp/reports/validation_full.csv
 
 
 Check the command help for more details:
 
-	paster validation --help
+	ckan-c /path/to/ckan/ini validation --help
 
-	Usage: paster validation [options] Utilities for the CKAN data validation extension
+	Usage: ckan -c /path/to/ckan/ini validation [options] Utilities for the CKAN data validation extension
 
     Usage:
-        paster validation init-db
+        ckan -c /path/to/ckan/ini validation init-db
             Initialize database tables
 
-        paster validation run [options]
+        ckan -c /path/to/ckan/ini validation run [options]
 
             Start asynchronous data validation on the site resources. If no
             options are provided it will run validation on all resources of
@@ -697,7 +697,7 @@ Check the command help for more details:
             resources. You can also pass arbitrary search parameters to filter
             the selected datasets.
 
-         paster validation report [options]
+        ckan -c /path/to/ckan/ini validation report [options]
 
             Generate a report with all current data validation reports. This
             will print an overview of the total number of tabular resources
@@ -710,7 +710,7 @@ Check the command help for more details:
                 * Status
                 * Validation report URL
 
-          paster validation report-full [options]
+        ckan -c /path/to/ckan/ini validation report-full [options]
 
             Generate a detailed report. This is similar to the previous command
             but on the CSV report it will add a row for each error found on the

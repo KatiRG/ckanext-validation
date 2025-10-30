@@ -72,7 +72,7 @@ class ValidationPlugin(p.SingletonPlugin):
             log.critical(u'''
 The validation extension requires a database setup. Please run the following
 to create the database tables:
-    paster --plugin=ckanext-validation validation init-db
+    ckan -c /path/to/ini/file validation init-db
 ''')
         else:
             log.debug(u'Validation tables exist')
