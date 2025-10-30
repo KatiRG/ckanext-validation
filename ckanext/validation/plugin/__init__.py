@@ -58,7 +58,25 @@ class ValidationPlugin(p.SingletonPlugin):
     # IBlueprint
 
     def get_blueprint(self):
-        return [blueprints.validation]
+        #return [blueprints.validation]
+
+        from flask import Blueprint
+        from ckanext.validation.model import tables_exist
+
+        # Runtime check blueprint
+        runtime_check = Blueprint('validation_check', __name__)
+
+        @runtime_check.before_app_request
+        def check_validation_table():
+            if not tables_exist():
+                log.warning(
+                    "ckanext-validation: Validation table not found. "
+                    "Run `ckan -c /path/to/ini validation init-db` to initialize."
+                )
+
+        # Return both the original blueprint and the runtime check
+        return [blueprints.validation, runtime_check]
+
 
     # IClick
 
@@ -68,15 +86,6 @@ class ValidationPlugin(p.SingletonPlugin):
     # IConfigurer
 
     def update_config(self, config_):
-        if not tables_exist():
-            log.critical(u'''
-The validation extension requires a database setup. Please run the following
-to create the database tables:
-    ckan -c /path/to/ini/file validation init-db
-''')
-        else:
-            log.debug(u'Validation tables exist')
-
         t.add_template_directory(config_, u'../templates')
         t.add_public_directory(config_, u'../public')
         t.add_resource(u'../webassets', 'ckanext-validation')
