@@ -502,8 +502,9 @@ def resource_create(up_func, context, data_dict):
             hasattr(upload, 'filename') and
             upload.filename is not None and
             isinstance(upload, uploader.ResourceUpload))
-        _run_sync_validation(
-            resource_id, local_upload=is_local_upload, new_resource=True)
+        if is_local_upload:
+            _run_sync_validation(
+                resource_id, local_upload=is_local_upload, new_resource=True)
 
     # Custom code ends
 
@@ -626,11 +627,16 @@ def resource_update(up_func, context, data_dict):
             hasattr(upload, 'filename') and
             upload.filename is not None and
             isinstance(upload, uploader.ResourceUpload))
-        if resource['format'] == 'CSV':
-            _run_sync_validation(
-                id, local_upload=is_local_upload, new_resource=False)
+        if is_local_upload:
+            if resource['format'] == 'CSV' and resource['datastore_active']:
+                _run_sync_validation(
+                    id, local_upload=is_local_upload, new_resource=False)
+            else:
+                msg = 'Resource {} is not a CSV file. No validation performed'.format(
+                    id)
+                log.info(msg)
         else:
-            msg = 'Resource {} is not a CSV file. No validation performed'.format(
+            msg = 'Resource {} is remote. No validation performed'.format(
                 id)
             log.info(msg)
 
@@ -680,15 +686,8 @@ def _run_sync_validation(resource_id, local_upload=False, new_resource=True):
         report = json.loads(validation['report'])
 
         if not report['valid']:
-            # Delete validation object
-            t.get_action(u'resource_validation_delete')(
-                {u'ignore_auth': True},
-                {u'resource_id': resource_id}
-            )
-
-            # Delete uploaded file
-            if local_upload:
-                delete_local_uploaded_file(resource_id)
+            # Do not delete validation object
+            # Do not delete uploaded file
 
             if new_resource:
                 try:
