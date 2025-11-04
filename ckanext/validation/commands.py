@@ -26,10 +26,10 @@ class Validation(CkanCommand):
     u'''Utilities for the CKAN data validation extension
 
     Usage:
-        paster validation init-db
+        ckan -c /path/to/ckan/ini validation init-db
             Initialize database tables
 
-        paster validation run [options]
+        ckan -c /path/to/ckan/ini validation run [options]
 
             Start asynchronous data validation on the site resources. If no
             options are provided it will run validation on all resources of
@@ -38,7 +38,7 @@ class Validation(CkanCommand):
             resources. You can also pass arbitrary search parameters to filter
             the selected datasets.
 
-         paster validation report [options]
+        ckan -c /path/to/ckan/ini validation report [options]
 
             Generate a report with all current data validation reports. This
             will print an overview of the total number of tabular resources
@@ -51,7 +51,7 @@ class Validation(CkanCommand):
                 * Status
                 * Validation report URL
 
-          paster validation report-full [options]
+        ckan -c /path/to/ckan/ini validation report-full [options]
 
             Generate a detailed report. This is similar to the previous command
             but on the CSV report it will add a row for each error found on the
