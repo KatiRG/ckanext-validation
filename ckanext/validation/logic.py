@@ -490,7 +490,9 @@ def resource_create(up_func, context, data_dict):
 
     # Custom code starts
 
-    run_validation = True
+    # Treat anything that is not an upload as "remote" -> do not validate
+    url_type = (data_dict.get('url_type') or '').lower()
+    run_validation = (url_type == 'upload')
 
     for plugin in plugins.PluginImplementations(IDataValidation):
         if not plugin.can_validate(context, data_dict):
@@ -653,19 +655,34 @@ def resource_update(up_func, context, data_dict):
 
 def _run_sync_validation(resource_id, local_upload=False, new_resource=True):
 
+    # Guard: never validate remote resources
+    try:
+        resource = t.get_action(u'resource_show')(
+            {u'ignore_auth': True}, {u'id': resource_id})
+        url_type = (resource.get('url_type') or '').lower()
+        if url_type != 'upload':
+            log.debug('Remote resource %s: skipping _run_sync_validation', resource_id)
+            return
+    except Exception as ex:
+        # If for any reason we cannot fetch the resource, be conservative and skip.
+        log.debug('Could not fetch resource %s (%s); skipping _run_sync_validation',
+                  resource_id, ex)
+        return
+
     try:
         if new_resource == True:
-            ui_dict = []
+            ui_dict = None
         else:
             # Get the CKAN UI dict containing Frictionless data types
             ui_dict = get_datastore_info(resource_id)
 
-        t.get_action(u'resource_validation_run')(
-            {u'ignore_auth': True},
-            {u'resource_id': resource_id,
-             u'async': False,
-             u'ui_dict': ui_dict
-             })
+        
+        payload = {u'resource_id': resource_id, u'async': False}
+        if ui_dict:
+            payload[u'ui_dict'] = ui_dict
+
+        t.get_action(u'resource_validation_run')({u'ignore_auth': True}, payload)
+
     except t.ValidationError as e:
         log.info(
             u'Could not run validation for resource %s: %s',
@@ -696,10 +713,11 @@ def _run_sync_validation(resource_id, local_upload=False, new_resource=True):
 
             raise t.ValidationError({
                 u'validation': [report]})
-    else:
-        raise t.ValidationError({
-            'validation': []
-        })
+    else:   
+        # Do not raise empty errors; just log and return
+        log.warning('Validation returned no report for resource %s', resource_id)
+        return
+
 
 ## CUSTOM EDITS
 def get_datastore_info(resource_id):

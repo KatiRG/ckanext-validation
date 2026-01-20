@@ -25,127 +25,131 @@ log = logging.getLogger(__name__)
 
 
 def run_validation_job(resource):
+    if (resource.get('url_type') or '').lower() == 'upload':
 
-    log.debug('Validating resource %s', resource['id'])
+        log.debug('Validating resource %s', resource['id'])
 
-    try:
-        validation = Session.query(Validation).filter(
-            Validation.resource_id == resource['id']).one()
-    except NoResultFound:
-        validation = None
+        try:
+            validation = Session.query(Validation).filter(
+                Validation.resource_id == resource['id']).one()
+        except NoResultFound:
+            validation = None
 
-    if not validation:
-        validation = Validation(resource_id=resource['id'])
+        if not validation:
+            validation = Validation(resource_id=resource['id'])
 
-    validation.status = 'running'
-    Session.add(validation)
-    Session.commit()
+        validation.status = 'running'
+        Session.add(validation)
+        Session.commit()
 
-    # Get any validation options that many be specified in
-    # the default_validation_options of ckan.ini.
-    options = t.config.get(
-        'ckanext.validation.default_validation_options')
-    # Determine the current url
-    this_url = clean_dict(
-                unflatten(tuplize_dict(parse_params(t.request.form)))
-            )
-    if options:
-        options = json.loads(options)
-    else:
-        options = {}
-
-    # Check if on create new resoruce page
-    if this_url['save'] == 'go-dataset-step2':
-        # This is a new resource so skip type errors.
-        # All columns initially should be pushed to
-        # DataStore as text.
-        options = {"skip_errors": ['type-error']}
-
-    resource_options = resource.get('validation_options')
-    if resource_options and isinstance(resource_options, str):
-        resource_options = json.loads(resource_options)
-    if resource_options:
-        options.update(resource_options)
-
-    dataset = t.get_action('package_show')(
-        {'ignore_auth': True}, {'id': resource['package_id']})
-
-    source = None
-    if resource.get('url_type') == 'upload':
-        upload = uploader.get_resource_uploader(resource)
-        if isinstance(upload, uploader.ResourceUpload):
-            source = upload.get_path(resource['id'])
+        # Get any validation options that many be specified in
+        # the default_validation_options of ckan.ini.
+        options = t.config.get(
+            'ckanext.validation.default_validation_options')
+        # Determine the current url
+        this_url = clean_dict(
+                    unflatten(tuplize_dict(parse_params(t.request.form)))
+                )
+        if options:
+            options = json.loads(options)
         else:
-            # Upload is not the default implementation (ie it's a cloud storage
-            # implementation)
-            pass_auth_header = t.asbool(
-                t.config.get('ckanext.validation.pass_auth_header', True))
-            if dataset['private'] and pass_auth_header:
-                s = requests.Session()
-                s.headers.update({
-                    'Authorization': t.config.get(
-                        'ckanext.validation.pass_auth_header_value',
-                        _get_site_user_api_key())
-                })
+            options = {}
 
-                options['http_session'] = s
+        # Check if on create new resoruce page
+        if this_url['save'] == 'go-dataset-step2':
+            # This is a new resource so skip type errors.
+            # All columns initially should be pushed to
+            # DataStore as text.
+            options = {"skip_errors": ['type-error']}
 
-    if not source:
-        source = resource['url']
-    
-    # If the CKAN UI dict has been passed in, assign it to schema
-    if 'ui_dict' in resource and len(resource['ui_dict']) > 0:
-        schema = resource.get('ui_dict')
-    else:
-        schema = resource.get('schema')
+        resource_options = resource.get('validation_options')
+        if resource_options and isinstance(resource_options, str):
+            resource_options = json.loads(resource_options)
+        if resource_options:
+            options.update(resource_options)
 
-    _format = resource['format'].lower()
-    report = _validate_table(source, _format=_format, schema=schema, **options)
+        dataset = t.get_action('package_show')(
+            {'ignore_auth': True}, {'id': resource['package_id']})
 
-    # Hide uploaded files
-    if type(report) == Report:
-        report = report.to_dict()
+        source = None
+        if resource.get('url_type') == 'upload':
+            upload = uploader.get_resource_uploader(resource)
+            if isinstance(upload, uploader.ResourceUpload):
+                source = upload.get_path(resource['id'])
+            else:
+                # Upload is not the default implementation (ie it's a cloud storage
+                # implementation)
+                pass_auth_header = t.asbool(
+                    t.config.get('ckanext.validation.pass_auth_header', True))
+                if dataset['private'] and pass_auth_header:
+                    s = requests.Session()
+                    s.headers.update({
+                        'Authorization': t.config.get(
+                            'ckanext.validation.pass_auth_header_value',
+                            _get_site_user_api_key())
+                    })
 
-    if 'tasks' in report:
-        for table in report['tasks']:
-            if table['place'].startswith('/'):
-                table['place'] = resource['url']
-    if 'warnings' in report:
-        validation.status = 'error'
-        for index, warning in enumerate(report['warnings']):
-            report['warnings'][index] = re.sub(r'Table ".*"', 'Table', warning)
-    if 'valid' in report:
-        validation.status = 'success' if report['valid'] else 'failure'
-        validation.report = json.dumps(report)
-    else:
-        validation.report = json.dumps(report)
-        if 'errors' in report and report['errors']: 
+                    options['http_session'] = s
+
+        if not source:
+            source = resource['url']
+        
+        # If the CKAN UI dict has been passed in, assign it to schema
+        if 'ui_dict' in resource and len(resource['ui_dict']) > 0:
+            schema = resource.get('ui_dict')
+        else:
+            schema = resource.get('schema')
+
+        _format = resource['format'].lower()
+        report = _validate_table(source, _format=_format, schema=schema, **options)
+
+        # Hide uploaded files
+        if type(report) == Report:
+            report = report.to_dict()
+
+        if 'tasks' in report:
+            for table in report['tasks']:
+                if table['place'].startswith('/'):
+                    table['place'] = resource['url']
+        if 'warnings' in report:
             validation.status = 'error'
-            validation.error = {
-                'message': [str(err) for err in report['errors']]}
+            for index, warning in enumerate(report['warnings']):
+                report['warnings'][index] = re.sub(r'Table ".*"', 'Table', warning)
+        if 'valid' in report:
+            validation.status = 'success' if report['valid'] else 'failure'
+            validation.report = json.dumps(report)
         else:
-            validation.error = {'message': ['Errors validating the data']}
-    validation.finished = datetime.datetime.utcnow()
+            validation.report = json.dumps(report)
+            if 'errors' in report and report['errors']: 
+                validation.status = 'error'
+                validation.error = {
+                    'message': [str(err) for err in report['errors']]}
+            else:
+                validation.error = {'message': ['Errors validating the data']}
+        validation.finished = datetime.datetime.utcnow()
 
-    Session.add(validation)
-    Session.commit()
+        Session.add(validation)
+        Session.commit()
 
-    # Store result status in resource
-    data_dict = {
-        'id': resource['id'],
-        'validation_status': validation.status,
-        'validation_timestamp': validation.finished.isoformat(),
-    }
+        # Store result status in resource
+        data_dict = {
+            'id': resource['id'],
+            'validation_status': validation.status,
+            'validation_timestamp': validation.finished.isoformat(),
+        }
 
-    if get_update_mode_from_config() == 'sync':
-        data_dict['_skip_next_validation'] = True,
+        if get_update_mode_from_config() == 'sync':
+            data_dict['_skip_next_validation'] = True,
 
-    patch_context = {
-        'ignore_auth': True,
-        'user': t.get_action('get_site_user')({'ignore_auth': True})['name'],
-        '_validation_performed': True
-    }
-    t.get_action('resource_patch')(patch_context, data_dict)
+        patch_context = {
+            'ignore_auth': True,
+            'user': t.get_action('get_site_user')({'ignore_auth': True})['name'],
+            '_validation_performed': True
+        }
+        t.get_action('resource_patch')(patch_context, data_dict)
+    else:
+        log.debug('Remote file, not sending for validation')
+        return
 
 
 
