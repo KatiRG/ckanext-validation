@@ -138,9 +138,6 @@ def run_validation_job(resource):
             'validation_timestamp': validation.finished.isoformat(),
         }
 
-        if get_update_mode_from_config() == 'sync':
-            data_dict['_skip_next_validation'] = True,
-
         patch_context = {
             'ignore_auth': True,
             'user': t.get_action('get_site_user')({'ignore_auth': True})['name'],
