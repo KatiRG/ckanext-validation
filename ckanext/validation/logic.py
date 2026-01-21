@@ -621,9 +621,6 @@ def resource_update(up_func, context, data_dict):
             run_validation = False
 
     if run_validation:
-        run_validation = not data_dict.pop('_skip_next_validation', None)
-
-    if run_validation:
         is_local_upload = (
             hasattr(upload, 'filename') and
             upload.filename is not None and
