@@ -9,6 +9,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from frictionless import validate, system, Report, Schema, Dialect, Check, checks
 from ckanext.validation.ontario_data_standards.header_rule_2_2_header_length import header_rule_2_2_header_length
 from ckanext.validation.ontario_data_standards.header_rule_2_4_first_char import header_rule_2_4_first_char
+from ckanext.validation.ontario_data_standards.strict_duplicate import strict_duplicate_row
 
 from ckan.model import Session
 import ckan.lib.uploader as uploader
@@ -59,7 +60,10 @@ def run_validation_job(resource):
         # This is a new resource so skip type errors.
         # All columns initially should be pushed to
         # DataStore as text.
-        options = {"skip_errors": ['type-error']}
+        options.setdefault('skip_errors', [])
+        if 'type-error' not in options['skip_errors']:
+            options['skip_errors'].append('type-error')
+
 
     resource_options = resource.get('validation_options')
     if resource_options and isinstance(resource_options, str):
@@ -89,6 +93,8 @@ def run_validation_job(resource):
                 })
 
                 options['http_session'] = s
+
+    log.debug("HEI effective validation options: %r", options)
 
     if not source:
         source = resource['url']
@@ -172,8 +178,9 @@ def _validate_table(source, _format='csv', schema=None, **options):
 
     # Load the list of checks and its parameters declaratively as in https://framework.frictionlessdata.io/docs/checks/table.html
     if 'checks' in options:
-        checklist = [Check.from_descriptor(c) for c in options['checks']]
-        options['checks'] = checklist
+        # checklist = [Check.from_descriptor(c) for c in options['checks']]
+        # options['checks'] = checklist
+        options['checks'] = [Check.from_descriptor(c) for c in options['checks']]
 
     with system.use_context(**frictionless_context):
         report = validate(source, 
@@ -181,12 +188,14 @@ def _validate_table(source, _format='csv', schema=None, **options):
                           schema=resource_schema,
                           checks=[header_rule_2_2_header_length(),
                                   header_rule_2_4_first_char(),
-                                  checks.duplicate_row()
+                                  strict_duplicate_row()
                                  ],
                           **options
                          )
         log.debug('Validating source: %s', source)
 
+    print('..........................................')
+    print('HEI ckanext validation, report: ', report)
     return report
 
 
